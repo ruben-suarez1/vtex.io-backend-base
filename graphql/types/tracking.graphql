@@ -1,0 +1,11 @@
+type TrackingGuide {
+  trackingNumber: String!
+  status: String!
+  date: String
+}
+
+type TrackingResponse {
+  success: Boolean!
+  message: String!
+  guides: [TrackingGuide!]!
+}

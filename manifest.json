@@ -1,0 +1,48 @@
+{
+  "vendor": "asylummarketing",
+  "name": "vtex-io-backend-base",
+  "version": "0.0.1",
+  "title": "VTEX IO Backend Base",
+  "description": "Boilerplate backend enterprise para VTEX IO con rutas REST, GraphQL, clients, services y middlewares",
+  "builders": {
+    "node": "6.x",
+    "graphql": "2.x",
+    "messages": "1.x",
+    "docs": "0.x"
+  },
+  "policies": [
+    {
+      "name": "outbound-access",
+      "attrs": {
+        "host": "*.vtexcommercestable.com.br",
+        "path": "/api/oms/pvt/orders/*"
+      }
+    }
+  ],
+  "dependencies": {},
+  "credentialType": "absolute",
+  "settingsSchema": {
+    "title": "App Settings",
+    "type": "object",
+    "properties": {
+      "externalApiBaseUrl": {
+        "title": "External API Base URL",
+        "type": "string",
+        "default": "https://api.example.com"
+      },
+      "externalApiToken": {
+        "title": "External API Token",
+        "type": "string"
+      },
+      "omsAppKey": {
+        "title": "OMS App Key",
+        "type": "string"
+      },
+      "omsAppToken": {
+        "title": "OMS App Token",
+        "type": "string"
+      }
+    }
+  },
+  "$schema": "https://raw.githubusercontent.com/vtex/node-vtex-api/master/gen/manifest.schema"
+}

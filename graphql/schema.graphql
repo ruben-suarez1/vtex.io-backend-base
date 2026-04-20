@@ -1,0 +1,3 @@
+type Query {
+  tracking(orderId: String!): TrackingResponse! @auth(scope: PUBLIC)
+}
