@@ -1,8 +1,11 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/__tests__'],
+  roots: ['<rootDir>/../__tests__'],
   testMatch: ['**/*.test.ts'],
+  moduleNameMapper: {
+    '^(\\.{1,2}/.*)\\.js$': '$1',
+  },
   globals: {
     'ts-jest': {
       tsconfig: {
@@ -12,12 +15,13 @@ module.exports = {
         target: 'es2019',
         module: 'commonjs',
         lib: ['ES2020'],
+        baseUrl: '<rootDir>',
       },
     },
   },
   collectCoverageFrom: [
-    'validations/**/*.ts',
-    'services/**/*.ts',
-    '!services/settings/**',
+    '<rootDir>/validations/**/*.ts',
+    '<rootDir>/services/**/*.ts',
+    '!<rootDir>/services/settings/**',
   ],
 }

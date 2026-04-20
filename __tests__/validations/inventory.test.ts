@@ -1,5 +1,5 @@
-import { validateSkuId } from '../../validations/inventory'
-import { ValidationError } from '../../errors/ValidationError'
+import { validateSkuId } from '../../node/validations/inventory'
+import { ValidationError } from '../../node/errors/ValidationError'
 
 describe('validateSkuId', () => {
   it('lanza ValidationError si skuId es undefined', () => {

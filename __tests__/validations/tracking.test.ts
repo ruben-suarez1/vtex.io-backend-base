@@ -1,5 +1,5 @@
-import { validateOrderId } from '../../validations/tracking'
-import { ValidationError } from '../../errors/ValidationError'
+import { validateOrderId } from '../../node/validations/tracking'
+import { ValidationError } from '../../node/errors/ValidationError'
 
 describe('validateOrderId', () => {
   it('lanza ValidationError si orderId es undefined', () => {

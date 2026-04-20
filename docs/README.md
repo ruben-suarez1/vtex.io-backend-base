@@ -111,10 +111,69 @@ Todos los logs aparecen en la terminal donde corre `vtex link`. Cada request log
 
 ---
 
+## Tests
+
+Los tests viven en `__tests__/` en la raíz del proyecto — fuera de `node/` para que el builder de VTEX IO no los incluya en el build.
+
+```
+__tests__/
+├── validations/
+│   ├── tracking.test.ts
+│   └── inventory.test.ts
+└── services/
+    └── tracking/
+        ├── normalizeTracking.test.ts
+        └── getTrackingData.test.ts
+```
+
+### Correr los tests
+
+```bash
+cd node
+yarn test              # corre todos los tests
+yarn test:coverage     # corre con reporte de cobertura
+```
+
+### Qué se testea
+
+| Archivo | Qué cubre |
+|---|---|
+| `validations/tracking.test.ts` | `validateOrderId` — vacío, muy corto, válido |
+| `validations/inventory.test.ts` | `validateSkuId` — vacío, espacios, válido |
+| `services/tracking/normalizeTracking.test.ts` | null, objeto único, array, defaults, coerción de tipos |
+| `services/tracking/getTrackingData.test.ts` | flujo completo con OMS y carrier mockeados |
+
+### Regla para nuevos dominios
+
+Cada dominio nuevo debe tener al menos:
+1. Test de su validación
+2. Test de su normalizador
+3. Test de su service con mocks de clients
+
+```typescript
+// Patrón de mock de Context para tests de services
+function createCtx(overrides = {}) {
+  return {
+    clients: {
+      apps: { getAppSettings: jest.fn().mockResolvedValue(mockSettings) },
+      miClient: { miMetodo: jest.fn() },
+      ...overrides,
+    },
+  } as any
+}
+```
+
+> **`vtex link` no se ve afectado por los tests** — al estar fuera de `node/`, el builder remoto no los procesa.
+
+---
+
 ## Estructura de carpetas
 
 ```
 .
+├── __tests__/                          # Tests unitarios — fuera de node/ a propósito
+│   ├── validations/
+│   └── services/
 ├── graphql/
 │   ├── schema.graphql              # Entry point: declara todas las queries y mutations
 │   └── types/                      # Un archivo .graphql por dominio

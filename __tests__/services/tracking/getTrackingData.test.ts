@@ -1,8 +1,8 @@
-import { getTrackingData } from '../../../services/tracking/getTrackingData'
-import { ValidationError } from '../../../errors/ValidationError'
-import { ExternalServiceError } from '../../../errors/ExternalServiceError'
+import { getTrackingData } from '../../../node/services/tracking/getTrackingData'
+import { ValidationError } from '../../../node/errors/ValidationError'
+import { ExternalServiceError } from '../../../node/errors/ExternalServiceError'
 
-jest.mock('../../../utils/logger', () => ({
+jest.mock('../../../node/utils/logger', () => ({
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }))
 

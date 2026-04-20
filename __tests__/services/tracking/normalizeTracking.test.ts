@@ -1,4 +1,4 @@
-import { normalizeTracking } from '../../../services/tracking/normalizeTracking'
+import { normalizeTracking } from '../../../node/services/tracking/normalizeTracking'
 
 describe('normalizeTracking', () => {
   it('retorna array vacío si rawData es null', () => {
