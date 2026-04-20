@@ -1,3 +1,4 @@
 type Query {
   tracking(orderId: String!): TrackingResponse! @auth(scope: PUBLIC)
+  inventory(skuId: String!, channel: String): InventoryResponse! @auth(scope: PUBLIC)
 }

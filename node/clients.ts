@@ -1,6 +1,8 @@
 import { IOClients, Apps } from '@vtex/api'
 import OMSClient from './clients/oms'
 import ExternalCarrierClient from './clients/externalCarrier'
+import InventoryClient from './clients/inventory'
+import CatalogClient from './clients/catalog'
 
 export class Clients extends IOClients {
   public get apps() {
@@ -13,5 +15,13 @@ export class Clients extends IOClients {
 
   public get externalCarrier() {
     return this.getOrSet('externalCarrier', ExternalCarrierClient)
+  }
+
+  public get inventory() {
+    return this.getOrSet('inventory', InventoryClient)
+  }
+
+  public get catalog() {
+    return this.getOrSet('catalog', CatalogClient)
   }
 }

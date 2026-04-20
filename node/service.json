@@ -13,6 +13,10 @@
     "tracking": {
       "path": "/_v/public/tracking/:orderId",
       "public": true
+    },
+    "inventory": {
+      "path": "/_v/public/inventory/:skuId",
+      "public": true
     }
   }
 }

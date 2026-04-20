@@ -1,58 +1,184 @@
 # VTEX IO Backend Base
 
-Boilerplate enterprise para aplicaciones backend en VTEX IO. Incluye soporte para rutas REST, resolvers GraphQL, clients tipados, middlewares, servicios y manejo de errores estructurado.
+## Propósito
+
+Este boilerplate es la base de arranque para cualquier desarrollo backend en VTEX IO dentro de Asylum Marketing.
+
+Resuelve de entrada los problemas que aparecen en todo proyecto real:
+- Estructura de carpetas por dominio, escalable sin volverse caótica
+- Separación estricta de capas: transport → dominio → infraestructura
+- Middlewares de trazabilidad, logging y manejo de errores ya configurados
+- Soporte para REST y GraphQL desde el mismo app
+- Clients tipados para APIs de VTEX y servicios externos
+- Cache por ruta con estrategia definida
+
+Cualquier nuevo dominio (tracking, inventory, pricing, etc.) sigue el mismo patrón. Si el segundo dominio entra limpio, la base está bien diseñada.
 
 ---
 
-## Estructura del proyecto
+## Requisitos
+
+- Node.js 16+
+- VTEX CLI instalado globalmente: `npm i -g vtex`
+- Cuenta VTEX con workspace de desarrollo disponible
+
+---
+
+## Cómo hacer vtex link
+
+```bash
+# 1. Autenticarse con la cuenta VTEX
+vtex login asylummarketing
+
+# 2. Crear o usar un workspace de desarrollo
+vtex use {nombre-workspace}
+
+# 3. Linkear el app (hot reload automático al guardar)
+vtex link
+```
+
+Cuando el link está activo, la consola muestra las rutas disponibles:
+
+```
+Available service routes:
+https://app.io.vtex.com/asylummarketing.vtex-io-backend-base/v0/asylummarketing/{workspace}/_v/graphql
+https://{workspace}--asylummarketing.myvtex.com/_v/public/healthcheck
+https://{workspace}--asylummarketing.myvtex.com/_v/public/tracking/:orderId
+https://{workspace}--asylummarketing.myvtex.com/_v/public/inventory/:skuId
+```
+
+---
+
+## Cómo probar localmente
+
+### Rutas REST
+
+Usar Postman, Insomnia o curl directamente:
+
+```bash
+# Healthcheck
+curl https://{workspace}--asylummarketing.myvtex.com/_v/public/healthcheck
+
+# Tracking
+curl https://{workspace}--asylummarketing.myvtex.com/_v/public/tracking/1626210500001-01
+
+# Inventory
+curl https://{workspace}--asylummarketing.myvtex.com/_v/public/inventory/5103261
+```
+
+> Las rutas públicas son cacheadas por el CDN de VTEX. Si no ves cambios, agregá un query param para romper el cache: `?v=1`, `?v=2`, etc.
+
+### GraphQL
+
+El endpoint GraphQL requiere autenticación incluso en desarrollo. Obtené el token:
+
+```bash
+vtex local token
+```
+
+Luego usá ese token en Postman o cualquier cliente GraphQL:
+
+```
+POST https://app.io.vtex.com/asylummarketing.vtex-io-backend-base/v0/asylummarketing/{workspace}/_v/graphql
+
+Headers:
+  Authorization: bearer {token}
+  Content-Type: application/json
+```
+
+Ejemplo de query:
+
+```graphql
+query {
+  inventory(skuId: "5103261") {
+    skuId
+    skuName
+    totalAvailable
+    warehouses {
+      warehouseId
+      availableQuantity
+    }
+  }
+}
+```
+
+### Logs en tiempo real
+
+Todos los logs aparecen en la terminal donde corre `vtex link`. Cada request loguea:
+- `requestId` único para trazabilidad
+- Método, path, params y query
+- Status y duración en ms al finalizar
+
+---
+
+## Estructura de carpetas
 
 ```
 .
 ├── graphql/
-│   ├── schema.graphql          # Entry point del schema (queries y mutations)
-│   └── types/                  # Tipos GraphQL separados por dominio
+│   ├── schema.graphql              # Entry point: declara todas las queries y mutations
+│   └── types/                      # Un archivo .graphql por dominio
 │       ├── common.graphql
-│       └── tracking.graphql
+│       ├── tracking.graphql
+│       └── inventory.graphql
 ├── node/
-│   ├── index.ts                # Entry point: exporta service (REST) y resolvers (GraphQL)
-│   ├── service.ts              # Definición de rutas REST con middlewares
-│   ├── clients.ts              # Registro de todos los clients (IOClients)
-│   ├── clients/                # Un archivo por client externo
-│   │   ├── index.ts
-│   │   ├── oms.ts              # JanusClient para OMS de VTEX
-│   │   └── externalCarrier.ts  # ExternalClient para carrier externo
+│   ├── index.ts                    # Entry point: exporta service (REST) y resolvers (GraphQL)
+│   ├── service.ts                  # Registra rutas REST con su cadena de middlewares
+│   ├── service.json                # Declara paths y visibilidad de cada ruta REST
+│   ├── clients.ts                  # Registro centralizado de todos los clients
+│   ├── clients/
+│   │   ├── index.ts                # Re-exporta todos los clients
+│   │   ├── oms.ts                  # Client para OMS de VTEX
+│   │   ├── catalog.ts              # Client para Catalog de VTEX
+│   │   ├── inventory.ts            # Client para Logistics/Inventory de VTEX
+│   │   └── externalCarrier.ts      # Client para API externa de carrier
 │   ├── resolvers/
-│   │   ├── index.ts            # Agrupa queries y mutations
-│   │   ├── queries/            # Un archivo por query GraphQL
-│   │   └── mutations/          # Un archivo por mutation GraphQL
-│   ├── routes/                 # Handlers de rutas REST
+│   │   ├── index.ts                # Agrupa queries y mutations
+│   │   ├── queries/
+│   │   │   ├── index.ts            # Registra todos los query resolvers
+│   │   │   ├── tracking.ts
+│   │   │   └── inventory.ts
+│   │   └── mutations/
+│   │       └── index.ts
+│   ├── routes/                     # Handlers de rutas REST — solo coordinan, sin lógica
 │   │   ├── healthcheck.ts
-│   │   └── tracking.ts
-│   ├── services/               # Lógica de negocio desacoplada de transport
+│   │   ├── tracking.ts
+│   │   └── inventory.ts
+│   ├── services/                   # Lógica de negocio — agnóstica al transport
 │   │   ├── settings/
 │   │   │   └── getAppSettings.ts
-│   │   └── tracking/
-│   │       ├── getTrackingData.ts
-│   │       └── normalizeTracking.ts
+│   │   ├── tracking/
+│   │   │   ├── getTrackingData.ts
+│   │   │   └── normalizeTracking.ts
+│   │   └── inventory/
+│   │       ├── getInventoryByChannel.ts
+│   │       └── normalizeInventory.ts
 │   ├── middlewares/
-│   │   ├── errorHandler.ts     # Captura AppError y errores no controlados
-│   │   └── requestLogger.ts    # Log de entrada/salida de requests
+│   │   ├── errorHandler.ts         # Captura AppError y errores no controlados
+│   │   ├── requestLogger.ts        # Log de entrada/salida con requestId
+│   │   ├── requestId.ts            # Genera y propaga X-Request-Id
+│   │   └── responseTime.ts         # Agrega header X-Response-Time
 │   ├── errors/
-│   │   ├── AppError.ts         # Base para errores controlados
-│   │   ├── ValidationError.ts  # Errores de validación (400)
-│   │   └── ExternalServiceError.ts  # Errores de servicios externos (502)
-│   ├── validations/            # Validadores por dominio
-│   ├── typings/                # Interfaces TypeScript por dominio
-│   │   ├── context.ts          # Context y State tipados
-│   │   ├── settings.ts         # AppSettings
-│   │   └── tracking.ts         # Tipos de dominio Tracking
+│   │   ├── AppError.ts             # Base para todos los errores controlados
+│   │   ├── ValidationError.ts      # 400 — input inválido
+│   │   └── ExternalServiceError.ts # 502 — fallo de servicio externo
+│   ├── validations/                # Un archivo por dominio
+│   │   ├── tracking.ts
+│   │   └── inventory.ts
+│   ├── typings/                    # Interfaces TypeScript por dominio
+│   │   ├── context.ts              # Context y State tipados
+│   │   ├── settings.ts             # AppSettings
+│   │   ├── tracking.ts
+│   │   └── inventory.ts
 │   ├── config/
 │   │   ├── constants.ts
 │   │   └── timeouts.ts
 │   └── utils/
-│       ├── logger.ts           # Logger estructurado (JSON)
-│       └── response.ts         # Builders de respuesta estándar
-├── messages/                   # i18n (requerido por el builder messages)
+│       ├── logger.ts               # Logger estructurado en JSON
+│       ├── response.ts             # buildErrorResponse, buildSuccessResponse, setCache
+│       ├── withRetry.ts            # Reintentos con backoff exponencial
+│       └── withTimeout.ts          # Timeout configurable por llamada
+├── messages/
 │   ├── en.json
 │   └── es.json
 └── manifest.json
@@ -60,33 +186,163 @@ Boilerplate enterprise para aplicaciones backend en VTEX IO. Incluye soporte par
 
 ---
 
-## Arquitectura
+## Flujo de una request
 
-El proyecto sigue una separación estricta por capas:
+Cada request REST pasa por la siguiente cadena antes de llegar al handler:
 
 ```
-Route / Resolver  →  Service  →  Client
-       ↑                              ↑
-  (transport)      (dominio)    (infraestructura)
+Request entrante
+      │
+      ▼
+ errorHandler       ← envuelve todo, captura cualquier error
+      │
+      ▼
+  requestId         ← genera X-Request-Id único (o propaga el entrante)
+      │
+      ▼
+ responseTime       ← inicia el timer para X-Response-Time
+      │
+      ▼
+requestLogger       ← loguea entrada con requestId, método, path, params
+      │
+      ▼
+ route handler      ← extrae params, llama al service, setea cache y body
+      │
+      ▼
+   service          ← valida, orquesta clients, normaliza
+      │
+      ▼
+   client(s)        ← llama APIs externas o internas de VTEX
+      │
+      ▼
+requestLogger       ← loguea salida con status y durationMs
+      │
+      ▼
+ responseTime       ← escribe header X-Response-Time
+      │
+      ▼
+  Respuesta HTTP
 ```
 
-- **Routes / Resolvers**: solo coordinan, no tienen lógica de negocio.
-- **Services**: orquestan la lógica. Son agnósticos al transport (REST o GraphQL pueden compartir el mismo service).
-- **Clients**: encapsulan comunicación con APIs externas o internas.
+Para GraphQL el flujo es el mismo desde el resolver en adelante — routes y resolvers comparten los mismos services.
 
 ---
 
-## Cómo agregar una ruta REST
+## Cómo crear un nuevo client
+
+Un client encapsula toda la comunicación con una API externa o interna de VTEX.
+
+**1. Crear el archivo en `node/clients/`:**
+
+```typescript
+// node/clients/pricing.ts
+import { ExternalClient, IOContext, InstanceOptions } from '@vtex/api'
+
+export default class PricingClient extends ExternalClient {
+  constructor(context: IOContext, options?: InstanceOptions) {
+    super(`https://${context.account}.vtexcommercestable.com.br`, context, options)
+  }
+
+  public getPrice(skuId: string, appKey: string, appToken: string) {
+    return this.http.get(`/api/pricing/prices/${skuId}`, {
+      headers: {
+        'X-VTEX-API-AppKey': appKey,
+        'X-VTEX-API-AppToken': appToken,
+      },
+    })
+  }
+}
+```
+
+**2. Registrar en `node/clients.ts`:**
+
+```typescript
+import PricingClient from './clients/pricing'
+
+public get pricing() {
+  return this.getOrSet('pricing', PricingClient)
+}
+```
+
+**3. Re-exportar en `node/clients/index.ts`:**
+
+```typescript
+export { default as PricingClient } from './pricing'
+```
+
+**4. Agregar la policy en `manifest.json`:**
+
+```json
+{
+  "name": "outbound-access",
+  "attrs": {
+    "host": "*.vtexcommercestable.com.br",
+    "path": "/api/pricing/prices/*"
+  }
+}
+```
+
+> La URL base se construye en el constructor usando `context.account` para que sea dinámica por cuenta. Nunca hardcodear URLs de VTEX.
+
+---
+
+## Cómo crear un nuevo service
+
+Un service contiene la lógica de negocio. Es agnóstico al transport — puede ser llamado desde una route REST y desde un resolver GraphQL.
+
+**1. Crear la carpeta del dominio en `node/services/`:**
+
+```typescript
+// node/services/pricing/getPriceBySkuId.ts
+import type { Context } from '../../typings/context'
+import { validateSkuId } from '../../validations/pricing'
+import { getAppSettings } from '../settings/getAppSettings'
+
+export async function getPriceBySkuId(skuId: string, ctx: Context) {
+  validateSkuId(skuId)
+
+  const settings = await getAppSettings(ctx)
+  const appKey = settings.omsAppKey ?? ''
+  const appToken = settings.omsAppToken ?? ''
+
+  const raw = await ctx.clients.pricing.getPrice(skuId, appKey, appToken)
+
+  return {
+    skuId,
+    price: raw.costPrice,
+    currency: raw.currency,
+  }
+}
+```
+
+**Reglas del service:**
+- Siempre validar inputs al inicio
+- Nunca acceder a `ctx.body`, `ctx.status` ni `ctx.query` — eso es del transport
+- Llamadas paralelas con `Promise.all` cuando no hay dependencia entre ellas
+- Usar `withRetry` para servicios inestables, `withTimeout` para límites duros
+
+---
+
+## Cómo crear una nueva route REST
+
+Una route solo coordina: extrae params, llama al service, setea cache y body.
 
 **1. Crear el handler en `node/routes/`:**
 
 ```typescript
-// node/routes/myRoute.ts
+// node/routes/pricing.ts
 import type { Context } from '../typings/context'
+import { getPriceBySkuId } from '../services/pricing/getPriceBySkuId'
+import { setCache } from '../utils/response'
 
-export async function myRoute(ctx: Context) {
+export async function pricingRoute(ctx: Context) {
+  const skuId = String(ctx.vtex.route.params.skuId ?? '')
+
+  const result = await getPriceBySkuId(skuId, ctx)
+
+  setCache(ctx, 30)
   ctx.status = 200
-  ctx.body = { ok: true }
+  ctx.body = result
 }
 ```
 
@@ -95,24 +351,24 @@ export async function myRoute(ctx: Context) {
 ```json
 {
   "routes": {
-    "myRoute": {
-      "path": "/_v/private/my-route",
-      "public": false
+    "pricing": {
+      "path": "/_v/public/pricing/:skuId",
+      "public": true
     }
   }
 }
 ```
 
-> El nombre de la clave (`myRoute`) debe coincidir exactamente con el nombre en `service.ts`. Los path params se declaran como `:param`.
+> El nombre de la clave debe coincidir exactamente con el nombre en `service.ts`.
 
-**3. Registrar el handler en `node/service.ts`:**
+**3. Registrar en `node/service.ts`:**
 
 ```typescript
-import { myRoute } from './routes/myRoute'
+import { pricingRoute } from './routes/pricing'
 
 routes: {
-  myRoute: method({
-    GET: [errorHandler, requestLogger, myRoute],
+  pricing: method({
+    GET: [errorHandler, requestId, responseTime, requestLogger, pricingRoute],
   }),
 }
 ```
@@ -121,113 +377,65 @@ routes: {
 
 ## ⚠️ Rutas públicas vs privadas — decisión crítica
 
-Esta es la decisión más importante al declarar una ruta. Elegir mal expone datos o rompe integraciones.
+| ¿Quién llama la ruta? | Visibilidad | Path |
+|---|---|---|
+| Frontend / storefront / browser | `public: true` | `/_v/public/...` |
+| Monitoring / healthcheck externo | `public: true` | `/_v/public/...` |
+| Otra app VTEX IO / backend | `public: false` | `/_v/private/...` |
+| Cualquier cosa que toque datos de negocio | `public: false` | `/_v/private/...` |
 
-### Ruta privada (default — usar siempre salvo excepción)
-
-```json
-{
-  "path": "/_v/private/my-route",
-  "public": false
-}
-```
-
-- Solo accesible desde otras apps VTEX IO o llamadas autenticadas con token de VTEX.
-- **Usar para**: lógica interna, integraciones entre apps, datos sensibles, OMS, pricing, inventario.
-
-### Ruta pública
-
-```json
-{
-  "path": "/_v/public/my-route",
-  "public": true
-}
-```
-
-- Accesible desde el browser del cliente final sin autenticación.
-- **Usar para**: healthcheck, endpoints de storefront, datos no sensibles que consume el frontend.
-- **NUNCA exponer** datos de órdenes, clientes, precios especiales, o lógica de negocio crítica en rutas públicas.
-
-### Regla práctica
-
-| ¿Quién llama la ruta? | Visibilidad |
-|---|---|
-| Otra app VTEX IO / backend | `private` |
-| Frontend / storefront / browser | `public` |
-| Monitoring / healthcheck externo | `public` |
-| Cualquier cosa que toque datos de negocio | `private` |
-
-> **El path debe reflejar la visibilidad**: `/_v/private/...` para privadas, `/_v/public/...` para públicas. Es convención del framework y ayuda a auditar de un vistazo.
+> **NUNCA exponer** datos de órdenes, clientes, precios especiales o inventario en rutas públicas.
 
 ---
 
-## Cómo agregar una query GraphQL
+## Cómo crear un nuevo resolver GraphQL
 
-**1. Declarar el tipo y query en `graphql/`:**
+Un resolver GraphQL llama al mismo service que la route REST del mismo dominio.
+
+**1. Declarar el tipo en `graphql/types/`:**
 
 ```graphql
-# graphql/types/myDomain.graphql
-type MyResponse {
-  id: String!
-  name: String!
+# graphql/types/pricing.graphql
+type PriceResponse {
+  skuId: String!
+  price: Float!
+  currency: String!
 }
 ```
 
+**2. Agregar la query en `graphql/schema.graphql`:**
+
 ```graphql
-# graphql/schema.graphql
 type Query {
-  myQuery(id: String!): MyResponse! @auth(scope: PUBLIC)
+  price(skuId: String!): PriceResponse! @auth(scope: PUBLIC)
 }
 ```
 
-**2. Crear el resolver en `node/resolvers/queries/`:**
+**3. Crear el resolver en `node/resolvers/queries/`:**
 
 ```typescript
-// node/resolvers/queries/myQuery.ts
+// node/resolvers/queries/price.ts
 import type { Context } from '../../typings/context'
+import { getPriceBySkuId } from '../../services/pricing/getPriceBySkuId'
 
-export async function myQuery(_: unknown, args: { id: string }, ctx: Context) {
-  // usar ctx.clients o llamar a un service
-  return { id: args.id, name: 'Example' }
+export async function price(_: unknown, args: { skuId: string }, ctx: Context) {
+  return getPriceBySkuId(args.skuId, ctx)
 }
 ```
 
-**3. Registrar en `node/resolvers/queries/index.ts`:**
+**4. Registrar en `node/resolvers/queries/index.ts`:**
 
 ```typescript
-import { myQuery } from './myQuery'
+import { price } from './price'
 
 export default {
-  myQuery,
+  price,
 }
 ```
 
 ---
 
 ## ⚠️ GraphQL — visibilidad por query — decisión crítica
-
-En GraphQL la visibilidad **no se controla en `service.json`** sino con la directiva `@auth` en cada query o mutation del schema. Cada operación tiene su propio scope.
-
-### Scopes disponibles
-
-```graphql
-# Cualquiera puede llamarla — sin autenticación
-type Query {
-  myQuery(id: String!): MyResponse! @auth(scope: PUBLIC)
-}
-
-# Solo usuarios logueados (sesión VTEX activa)
-type Query {
-  myQuery(id: String!): MyResponse! @auth(scope: PRIVATE)
-}
-
-# Solo administradores del panel VTEX
-type Query {
-  myQuery(id: String!): MyResponse! @auth(scope: ADMIN)
-}
-```
-
-### Regla práctica
 
 | ¿Quién llama la query? | Scope |
 |---|---|
@@ -236,73 +444,85 @@ type Query {
 | Panel admin / integración interna | `ADMIN` |
 | Cualquier cosa que toque datos sensibles | `ADMIN` o `PRIVATE` |
 
-> **NUNCA declarar `PUBLIC` en queries que devuelvan datos de órdenes, clientes, precios especiales o inventario**. El endpoint `/_v/graphql` es accesible desde internet — el `@auth` es la única barrera.
-
-### Diferencia con rutas REST
-
-| | REST | GraphQL |
-|---|---|---|
-| Visibilidad | `public: true/false` en `service.json` | `@auth(scope: ...)` en el schema |
-| Granularidad | Por ruta completa | Por query / mutation individual |
-| Path | `/_v/public/...` o `/_v/private/...` | Siempre `/_v/graphql` |
+> **El endpoint `/_v/graphql` es accesible desde internet.** El `@auth` es la única barrera — usarlo siempre y elegir el scope correcto.
 
 ---
 
-## Cómo agregar un client
+## Cómo registrar una ruta en service.json
 
-**1. Crear el client en `node/clients/`:**
-
-```typescript
-// node/clients/myApi.ts
-import { ExternalClient, IOContext, InstanceOptions } from '@vtex/api'
-
-export default class MyApiClient extends ExternalClient {
-  constructor(context: IOContext, options?: InstanceOptions) {
-    super('http://localhost', context, options)
-  }
-
-  public getData(baseUrl: string, id: string) {
-    return this.http.get(`${baseUrl}/resource/${id}`)
-  }
-}
-```
-
-> La URL base se recibe por parámetro del método para que pueda venir de `AppSettings`, no hardcodeada.
-
-**2. Registrar en `node/clients.ts`:**
-
-```typescript
-import MyApiClient from './clients/myApi'
-
-public get myApi() {
-  return this.getOrSet('myApi', MyApiClient)
-}
-```
-
-**3. Si el client accede a APIs internas de VTEX, agregar la policy en `manifest.json`:**
+`service.json` y `service.ts` trabajan juntos. El nombre de la clave debe ser idéntico en ambos.
 
 ```json
-"policies": [
-  {
-    "name": "outbound-access",
-    "attrs": {
-      "host": "portal.vtexcommercestable.com.br",
-      "path": "/api/my-endpoint/*"
+{
+  "memory": 256,
+  "ttl": 10,
+  "timeout": 10,
+  "minReplicas": 2,
+  "maxReplicas": 10,
+  "workers": 4,
+  "routes": {
+    "nombreRuta": {
+      "path": "/_v/public/mi-ruta/:param",
+      "public": true
     }
   }
-]
+}
+```
+
+| Campo | Descripción |
+|---|---|
+| `memory` | MB asignados por instancia |
+| `ttl` | Minutos sin requests antes de destruir la instancia |
+| `minReplicas` | Instancias siempre activas (evita cold start) |
+| `maxReplicas` | Límite de escala bajo carga |
+| `path` | URL de la ruta. Params con `:nombre` |
+| `public` | `true` = accesible sin auth. `false` = solo apps autenticadas |
+
+---
+
+## Manejo de errores
+
+Usar las clases provistas para que `errorHandler` responda con el código HTTP correcto:
+
+```typescript
+import { ValidationError } from '../errors/ValidationError'
+import { ExternalServiceError } from '../errors/ExternalServiceError'
+
+throw new ValidationError('skuId es requerido')           // → 400
+throw new ExternalServiceError('Error en carrier', error) // → 502
+```
+
+Errores no capturados devuelven 500 automáticamente.
+
+---
+
+## Utilidades disponibles
+
+```typescript
+import { withRetry } from '../utils/withRetry'
+import { withTimeout } from '../utils/withTimeout'
+import { setCache } from '../utils/response'
+
+// Reintentos con backoff exponencial (300ms, 600ms, 900ms)
+const data = await withRetry(() => ctx.clients.carrier.getTracking(...), 3)
+
+// Timeout duro — lanza AppError 504 si supera el límite
+const data = await withTimeout(ctx.clients.oms.getOrder(...), 5000)
+
+// Cache en la respuesta HTTP
+setCache(ctx, 60)  // 60 segundos. setCache(ctx, 0) = no-store
 ```
 
 ---
 
 ## Configuración de la app (Settings)
 
-Los settings se declaran en `manifest.json` bajo `settingsSchema` y se leen con `getAppSettings`:
+Los settings se configuran desde **VTEX Admin → Apps → {app} → Settings**.
+
+Se leen en el código con:
 
 ```typescript
 const settings = await getAppSettings(ctx)
-// settings.externalApiBaseUrl
-// settings.externalApiToken
 ```
 
 Para agregar un nuevo setting:
@@ -311,42 +531,12 @@ Para agregar un nuevo setting:
 
 ---
 
-## Manejo de errores
-
-Usar las clases de error provistas para que `errorHandler` responda con el código HTTP correcto:
-
-```typescript
-import { ValidationError } from '../errors/ValidationError'
-import { ExternalServiceError } from '../errors/ExternalServiceError'
-
-// 400
-throw new ValidationError('El orderId es requerido')
-
-// 502
-throw new ExternalServiceError('Error en carrier externo', originalError)
-```
-
-Errores no capturados devuelven 500 automáticamente.
-
----
-
 ## Deploy
 
 ```bash
-# Linkear en workspace de desarrollo
-vtex link
-
-# Deploy a producción
-vtex deploy
-
 # Publicar nueva versión
 vtex publish
+
+# Deployar a producción
+vtex deploy
 ```
-
----
-
-## Requisitos
-
-- Node.js 16+
-- VTEX CLI: `npm i -g vtex`
-- Cuenta VTEX con workspace de desarrollo

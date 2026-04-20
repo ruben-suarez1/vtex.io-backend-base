@@ -4,8 +4,11 @@ import { Clients } from './clients'
 import type { State } from './typings/context'
 import { errorHandler } from './middlewares/errorHandler'
 import { requestLogger } from './middlewares/requestLogger'
+import { requestId } from './middlewares/requestId'
+import { responseTime } from './middlewares/responseTime'
 import { healthcheck } from './routes/healthcheck'
 import { trackingRoute } from './routes/tracking'
+import { inventoryRoute } from './routes/inventory'
 
 export default new Service<Clients, State, ParamsContext>({
   clients: {
@@ -19,10 +22,13 @@ export default new Service<Clients, State, ParamsContext>({
   },
   routes: {
     healthcheck: method({
-      GET: [errorHandler, requestLogger, healthcheck],
+      GET: [errorHandler, requestId, responseTime, requestLogger, healthcheck],
     }),
     tracking: method({
-      GET: [errorHandler, requestLogger, trackingRoute],
+      GET: [errorHandler, requestId, responseTime, requestLogger, trackingRoute],
+    }),
+    inventory: method({
+      GET: [errorHandler, requestId, responseTime, requestLogger, inventoryRoute],
     }),
   },
 })

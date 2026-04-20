@@ -17,6 +17,20 @@
         "host": "*.vtexcommercestable.com.br",
         "path": "/api/oms/pvt/orders/*"
       }
+    },
+    {
+      "name": "outbound-access",
+      "attrs": {
+        "host": "*.vtexcommercestable.com.br",
+        "path": "/api/logistics/pvt/inventory/*"
+      }
+    },
+    {
+      "name": "outbound-access",
+      "attrs": {
+        "host": "*.vtexcommercestable.com.br",
+        "path": "/api/catalog/pvt/stockkeepingunit/*"
+      }
     }
   ],
   "dependencies": {},
