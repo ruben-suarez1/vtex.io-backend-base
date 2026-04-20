@@ -443,7 +443,7 @@ routes: {
 | Otra app VTEX IO / backend | `public: false` | `/_v/private/...` |
 | Cualquier cosa que toque datos de negocio | `public: false` | `/_v/private/...` |
 
-> **NUNCA exponer** datos de órdenes, clientes, precios especiales o inventario en rutas públicas.
+> **OJO** No exponer en rutas públicas datos sensibles de órdenes, clientes, precios especiales o inventario detallado por warehouse cuando implique riesgo de negocio.
 
 ---
 
@@ -469,6 +469,8 @@ type Query {
   price(skuId: String!): PriceResponse! @auth(scope: PUBLIC)
 }
 ```
+
+> **OJO** PUBLIC es solo un ejemplo. Para datos de pricing, stock detallado, órdenes o datos sensibles, evaluar PRIVATE o ADMIN.
 
 **3. Crear el resolver en `node/resolvers/queries/`:**
 
