@@ -148,6 +148,9 @@ __tests__/
     ├── tracking/
     │   ├── normalizeTracking.test.ts
     │   └── getTrackingData.test.ts
+    ├── inventory/
+    │   ├── normalizeInventory.test.ts
+    │   └── getInventoryByChannel.test.ts
     └── availability/
         ├── normalizeAvailability.test.ts
         └── getAvailabilityBySeller.test.ts
@@ -170,7 +173,9 @@ yarn test:coverage     # corre con reporte de cobertura
 | `validations/availability.test.ts` | `validateSkuId` — vacío, espacios, válido |
 | `services/tracking/normalizeTracking.test.ts` | null, objeto único, array, defaults, coerción de tipos |
 | `services/tracking/getTrackingData.test.ts` | flujo completo con OMS y carrier mockeados |
-| `services/availability/normalizeAvailability.test.ts` | agrupación por seller, join con registro, orden, filtro, negativos |
+| `services/inventory/normalizeInventory.test.ts` | balance vacío, filtro por channel, cálculo available, coerción de tipos |
+| `services/inventory/getInventoryByChannel.test.ts` | flujo completo con inventory y catalog mockeados |
+| `services/availability/normalizeAvailability.test.ts` | balance vacío, sellers activos, suma total, filtro, negativos |
 | `services/availability/getAvailabilityBySeller.test.ts` | flujo completo con inventory, seller y catalog mockeados |
 
 ### Regla para nuevos dominios
