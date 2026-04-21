@@ -2,96 +2,93 @@ import { normalizeAvailability } from '../../../node/services/availability/norma
 
 const rawSellers = {
   items: [
-    { id: 'seller1', name: 'Seller Uno', isActive: true },
-    { id: 'seller2', name: 'Seller Dos', isActive: true },
-    { id: 'seller3', name: 'Seller Inactivo', isActive: false },
+    { id: '1', name: 'Seller Uno', isActive: true },
+    { id: '2', name: 'Seller Dos', isActive: true },
+    { id: '3', name: 'Seller Inactivo', isActive: false },
   ],
 }
 
 const rawInventory = {
   balance: [
-    { sellerId: 'seller1', totalQuantity: 100, reservedQuantity: 10 },
-    { sellerId: 'seller1', totalQuantity: 50, reservedQuantity: 5 },
-    { sellerId: 'seller2', totalQuantity: 20, reservedQuantity: 20 },
-    { sellerId: 'seller3', totalQuantity: 200, reservedQuantity: 0 },
+    { totalQuantity: 100, reservedQuantity: 10 },
+    { totalQuantity: 50, reservedQuantity: 5 },
   ],
 }
 
 describe('normalizeAvailability', () => {
-  it('retorna array vacío si inventory no tiene balance', () => {
+  it('retorna array vacío si no hay balances de inventory', () => {
     const result = normalizeAvailability({}, rawSellers)
 
     expect(result).toEqual([])
   })
 
-  it('retorna array vacío si balance no es un array', () => {
+  it('retorna array vacío si balance es null', () => {
     const result = normalizeAvailability({ balance: null }, rawSellers)
 
     expect(result).toEqual([])
   })
 
-  it('agrupa balances del mismo seller y suma cantidades disponibles', () => {
-    const result = normalizeAvailability(rawInventory, rawSellers)
-    const seller1 = result.find((s) => s.sellerId === 'seller1')
-
-    expect(seller1?.totalAvailable).toBe(135) // (100-10) + (50-5)
-  })
-
-  it('marca como no disponible si totalAvailable es 0', () => {
-    const result = normalizeAvailability(rawInventory, rawSellers)
-    const seller2 = result.find((s) => s.sellerId === 'seller2')
-
-    expect(seller2?.isAvailable).toBe(false)
-    expect(seller2?.totalAvailable).toBe(0)
-  })
-
-  it('enriquece con el nombre del seller cuando está en el registro', () => {
-    const result = normalizeAvailability(rawInventory, rawSellers)
-    const seller1 = result.find((s) => s.sellerId === 'seller1')
-
-    expect(seller1?.sellerName).toBe('Seller Uno')
-  })
-
-  it('usa sellerId como sellerName si el seller no está en el registro', () => {
+  it('retorna array vacío si no hay sellers', () => {
     const result = normalizeAvailability(rawInventory, { items: [] })
-    const seller1 = result.find((s) => s.sellerId === 'seller1')
 
-    expect(seller1?.sellerName).toBe('seller1')
+    expect(result).toEqual([])
   })
 
-  it('ordena los sellers por totalAvailable de mayor a menor', () => {
+  it('suma el stock disponible de todos los warehouses', () => {
+    const result = normalizeAvailability(rawInventory, rawSellers)
+
+    // (100-10) + (50-5) = 135
+    expect(result[0].totalAvailable).toBe(135)
+  })
+
+  it('aplica el mismo totalAvailable a todos los sellers activos', () => {
     const result = normalizeAvailability(rawInventory, rawSellers)
     const totals = result.map((s) => s.totalAvailable)
 
-    expect(totals).toEqual([...totals].sort((a, b) => b - a))
+    expect(totals.every((t) => t === 135)).toBe(true)
   })
 
-  it('filtra por sellerId cuando se pasa el parámetro opcional', () => {
-    const result = normalizeAvailability(rawInventory, rawSellers, 'seller1')
-
-    expect(result).toHaveLength(1)
-    expect(result[0].sellerId).toBe('seller1')
-  })
-
-  it('ignora balances sin sellerId', () => {
-    const inventory = {
-      balance: [
-        { sellerId: '', totalQuantity: 100, reservedQuantity: 0 },
-        { sellerId: 'seller1', totalQuantity: 50, reservedQuantity: 0 },
-      ],
-    }
-    const result = normalizeAvailability(inventory, rawSellers)
+  it('incluye solo sellers activos', () => {
+    const result = normalizeAvailability(rawInventory, rawSellers)
     const ids = result.map((s) => s.sellerId)
 
-    expect(ids).not.toContain('')
+    expect(ids).toContain('1')
+    expect(ids).toContain('2')
+    expect(ids).not.toContain('3')
+  })
+
+  it('marca isAvailable true cuando hay stock', () => {
+    const result = normalizeAvailability(rawInventory, rawSellers)
+
+    expect(result.every((s) => s.isAvailable)).toBe(true)
+  })
+
+  it('marca isAvailable false cuando no hay stock', () => {
+    const noStock = { balance: [{ totalQuantity: 10, reservedQuantity: 10 }] }
+    const result = normalizeAvailability(noStock, rawSellers)
+
+    expect(result.every((s) => s.isAvailable)).toBe(false)
+    expect(result.every((s) => s.totalAvailable === 0)).toBe(true)
   })
 
   it('nunca retorna totalAvailable negativo', () => {
-    const inventory = {
-      balance: [{ sellerId: 'seller1', totalQuantity: 5, reservedQuantity: 100 }],
-    }
-    const result = normalizeAvailability(inventory, rawSellers)
+    const overReserved = { balance: [{ totalQuantity: 5, reservedQuantity: 100 }] }
+    const result = normalizeAvailability(overReserved, rawSellers)
 
-    expect(result[0].totalAvailable).toBe(0)
+    expect(result.every((s) => s.totalAvailable === 0)).toBe(true)
+  })
+
+  it('filtra por sellerId cuando se pasa el parámetro opcional', () => {
+    const result = normalizeAvailability(rawInventory, rawSellers, '1')
+
+    expect(result).toHaveLength(1)
+    expect(result[0].sellerId).toBe('1')
+  })
+
+  it('usa el name del seller del registro', () => {
+    const result = normalizeAvailability(rawInventory, rawSellers)
+    const seller = result.find((s) => s.sellerId === '1')
+
+    expect(seller?.sellerName).toBe('Seller Uno')
   })
 })

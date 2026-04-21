@@ -1,7 +1,12 @@
 import type { SellerAvailability } from '../../typings/availability'
 
+// VTEX Logistics inventory API returns balances per warehouse, not per seller.
+// The warehouse→seller mapping requires the Dock API (additional call).
+// This normalizer sums stock across all warehouses and reports that total
+// for each active seller — accurate for single-seller accounts, approximate
+// for multi-seller marketplaces.
+
 interface RawBalance {
-  sellerId?: string
   totalQuantity?: number
   reservedQuantity?: number
 }
@@ -20,40 +25,24 @@ export function normalizeAvailability(
   const balances: RawBalance[] = Array.isArray(rawInventory?.balance) ? rawInventory.balance : []
   const sellerItems: RawSeller[] = Array.isArray(rawSellers?.items) ? rawSellers.items : []
 
-  const sellerMap = new Map<string, string>(
-    sellerItems
-      .filter((s) => s.isActive && s.id)
-      .map((s) => [String(s.id), String(s.name ?? s.id)])
-  )
+  if (balances.length === 0 || sellerItems.length === 0) return []
 
-  const quantityBySeller = new Map<string, number>()
+  const totalAvailable = balances.reduce((sum, item) => {
+    const total = Number(item.totalQuantity ?? 0)
+    const reserved = Number(item.reservedQuantity ?? 0)
+    return sum + Math.max(0, total - reserved)
+  }, 0)
 
-  for (const balance of balances) {
-    const sellerId = String(balance.sellerId ?? '')
-    if (!sellerId) continue
+  let activeSellers = sellerItems.filter((s) => s.isActive && s.id)
 
-    const total = Number(balance.totalQuantity ?? 0)
-    const reserved = Number(balance.reservedQuantity ?? 0)
-    const available = Math.max(0, total - reserved)
-
-    quantityBySeller.set(sellerId, (quantityBySeller.get(sellerId) ?? 0) + available)
+  if (sellerIdFilter) {
+    activeSellers = activeSellers.filter((s) => String(s.id) === sellerIdFilter)
   }
 
-  const sellerIds = sellerIdFilter
-    ? [sellerIdFilter]
-    : Array.from(quantityBySeller.keys())
-
-  return sellerIds
-    .filter((id) => !sellerIdFilter || id === sellerIdFilter)
-    .map((sellerId) => {
-      const totalAvailable = quantityBySeller.get(sellerId) ?? 0
-
-      return {
-        sellerId,
-        sellerName: sellerMap.get(sellerId) ?? sellerId,
-        isAvailable: totalAvailable > 0,
-        totalAvailable,
-      }
-    })
-    .sort((a, b) => b.totalAvailable - a.totalAvailable)
+  return activeSellers.map((s) => ({
+    sellerId: String(s.id),
+    sellerName: String(s.name ?? s.id),
+    isAvailable: totalAvailable > 0,
+    totalAvailable,
+  }))
 }

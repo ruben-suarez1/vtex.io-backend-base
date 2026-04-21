@@ -12,15 +12,15 @@ const mockSettings = {
 
 const mockInventory = {
   balance: [
-    { sellerId: 'seller1', totalQuantity: 100, reservedQuantity: 10 },
-    { sellerId: 'seller2', totalQuantity: 30, reservedQuantity: 5 },
+    { totalQuantity: 100, reservedQuantity: 10 },
+    { totalQuantity: 30, reservedQuantity: 5 },
   ],
 }
 
 const mockSellers = {
   items: [
-    { id: 'seller1', name: 'Seller Uno', isActive: true },
-    { id: 'seller2', name: 'Seller Dos', isActive: true },
+    { id: '1', name: 'Seller Uno', isActive: true },
+    { id: '2', name: 'Seller Dos', isActive: true },
   ],
 }
 
@@ -75,17 +75,17 @@ describe('getAvailabilityBySeller', () => {
     const ctx = createCtx()
     const result = await getAvailabilityBySeller('5103261', ctx)
 
-    const seller1 = result.sellers.find((s) => s.sellerId === 'seller1')
-    expect(seller1?.totalAvailable).toBe(90)
-    expect(seller1?.isAvailable).toBe(true)
+    // (100-10) + (30-5) = 115 total del sistema, aplicado a todos los sellers activos
+    expect(result.sellers.every((s) => s.totalAvailable === 115)).toBe(true)
+    expect(result.sellers.every((s) => s.isAvailable)).toBe(true)
   })
 
   it('filtra por sellerId cuando se pasa el parámetro opcional', async () => {
     const ctx = createCtx()
-    const result = await getAvailabilityBySeller('5103261', ctx, 'seller1')
+    const result = await getAvailabilityBySeller('5103261', ctx, '1')
 
     expect(result.sellers).toHaveLength(1)
-    expect(result.sellers[0].sellerId).toBe('seller1')
+    expect(result.sellers[0].sellerId).toBe('1')
   })
 
   it('continúa si catalog falla — skuName queda vacío', async () => {
