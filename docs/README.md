@@ -81,6 +81,12 @@ curl https://{workspace}--asylummarketing.myvtex.com/_v/public/tracking/16262105
 
 # Inventory
 curl https://{workspace}--asylummarketing.myvtex.com/_v/public/inventory/5103261
+
+# Availability by seller
+curl https://{workspace}--asylummarketing.myvtex.com/_v/public/availability/5103261
+
+# Availability filtrada por seller
+curl https://{workspace}--asylummarketing.myvtex.com/_v/public/availability/5103261?sellerId=vtxkn1
 ```
 
 > Las rutas públicas son cacheadas por el CDN de VTEX. Si no ves cambios, agregá un query param para romper el cache: `?v=1`, `?v=2`, etc.
@@ -136,11 +142,15 @@ Los tests viven en `__tests__/` en la raíz del proyecto — fuera de `node/` pa
 __tests__/
 ├── validations/
 │   ├── tracking.test.ts
-│   └── inventory.test.ts
+│   ├── inventory.test.ts
+│   └── availability.test.ts
 └── services/
-    └── tracking/
-        ├── normalizeTracking.test.ts
-        └── getTrackingData.test.ts
+    ├── tracking/
+    │   ├── normalizeTracking.test.ts
+    │   └── getTrackingData.test.ts
+    └── availability/
+        ├── normalizeAvailability.test.ts
+        └── getAvailabilityBySeller.test.ts
 ```
 
 ### Correr los tests
@@ -157,8 +167,11 @@ yarn test:coverage     # corre con reporte de cobertura
 |---|---|
 | `validations/tracking.test.ts` | `validateOrderId` — vacío, muy corto, válido |
 | `validations/inventory.test.ts` | `validateSkuId` — vacío, espacios, válido |
+| `validations/availability.test.ts` | `validateSkuId` — vacío, espacios, válido |
 | `services/tracking/normalizeTracking.test.ts` | null, objeto único, array, defaults, coerción de tipos |
 | `services/tracking/getTrackingData.test.ts` | flujo completo con OMS y carrier mockeados |
+| `services/availability/normalizeAvailability.test.ts` | agrupación por seller, join con registro, orden, filtro, negativos |
+| `services/availability/getAvailabilityBySeller.test.ts` | flujo completo con inventory, seller y catalog mockeados |
 
 ### Regla para nuevos dominios
 

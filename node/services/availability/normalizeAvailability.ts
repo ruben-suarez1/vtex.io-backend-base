@@ -41,7 +41,7 @@ export function normalizeAvailability(
 
   const sellerIds = sellerIdFilter
     ? [sellerIdFilter]
-    : Array.from(new Set([...sellerMap.keys(), ...quantityBySeller.keys()]))
+    : Array.from(quantityBySeller.keys())
 
   return sellerIds
     .filter((id) => !sellerIdFilter || id === sellerIdFilter)
