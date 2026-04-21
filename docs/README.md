@@ -237,7 +237,7 @@ function createCtx(overrides = {}) {
 │   │   │   └── availability.ts
 │   │   └── mutations/
 │   │       └── index.ts
-│   ├── routes/                     # Handlers de rutas REST — solo coordinan, sin lógica
+│   ├── routes/                     # Routes REST — cada archivo exporta un handler, sin lógica de negocio
 │   │   ├── healthcheck.ts
 │   │   ├── tracking.ts
 │   │   ├── inventory.ts
@@ -390,7 +390,7 @@ Cada ítem con `*` es opcional según el dominio. El resto es obligatorio.
 - [ ] Registrar el client en `node/clients.ts` y `node/clients/index.ts` `*`
 - [ ] Crear `node/services/{dominio}/get{Dominio}.ts` — orquestación y lógica
 - [ ] Crear `node/services/{dominio}/normalize{Dominio}.ts` — normalización del raw
-- [ ] Crear `node/routes/{dominio}.ts` — handler REST `*`
+- [ ] Crear `node/routes/{dominio}.ts` — route REST con su handler `*`
 - [ ] Registrar la route en `node/service.ts` y `node/service.json` `*`
 - [ ] Crear `node/resolvers/queries/{dominio}.ts` — resolver GraphQL `*`
 - [ ] Registrar el resolver en `node/resolvers/queries/index.ts` `*`
