@@ -6,7 +6,7 @@ Este boilerplate es la base de arranque para cualquier desarrollo backend en VTE
 
 Resuelve de entrada los problemas que aparecen en todo proyecto real:
 - Estructura de carpetas por dominio, escalable sin volverse caótica
-- Separación estricta de capas: transport → dominio → infraestructura
+- Separación estricta de capas: transport → dominio → infraestructura *(transport = REST routes + GraphQL resolvers)*
 - Middlewares de trazabilidad, logging y manejo de errores ya configurados
 - Soporte para REST y GraphQL desde el mismo app
 - Clients tipados para APIs de VTEX y servicios externos
@@ -25,7 +25,7 @@ Estas reglas no son sugerencias. Son el estándar del boilerplate y se aplican a
 | **No poner lógica de negocio en routes** | Las routes solo coordinan: extraen params, llaman al service, setean cache y body. Nada más. |
 | **No poner lógica de negocio en resolvers** | Los resolvers son el equivalente GraphQL de las routes: delegan al service, no procesan. |
 | **No poner lógica de negocio en clients** | Los clients encapsulan comunicación HTTP, no decisiones de negocio. |
-| **Todo input se valida al inicio del service** | La validación es responsabilidad del service, no del transport. Si el service no valida, nadie valida. |
+| **Todo input de negocio se valida al inicio del service** | Las routes/resolvers solo extraen y convierten params básicos (`String(...)`, `?? ''`). La validación real — formato, existencia, reglas — es responsabilidad del service. |
 | **Toda integración externa debe considerar timeout** | Sin timeout, un servicio externo caído cuelga la request indefinidamente. Usar `withTimeout`. |
 | **Todo dominio nuevo debe traer tests mínimos** | Validación, normalizador y service con mocks. Sin tests, el dominio no está terminado. |
 | **Toda ruta pública debe justificar por qué es pública** | El default es privado. Lo público es una excepción que requiere decisión consciente. |
@@ -375,6 +375,27 @@ Las clases de error mapean directamente al código HTTP:
 
 ---
 
+## Checklist para agregar un nuevo dominio
+
+Cada ítem con `*` es opcional según el dominio. El resto es obligatorio.
+
+- [ ] Crear `node/typings/{dominio}.ts` — interfaces del dominio
+- [ ] Crear `node/validations/{dominio}.ts` — validación de inputs de negocio
+- [ ] Crear `node/clients/{dominio}.ts` — client HTTP si el dominio integra una API nueva `*`
+- [ ] Registrar el client en `node/clients.ts` y `node/clients/index.ts` `*`
+- [ ] Crear `node/services/{dominio}/get{Dominio}.ts` — orquestación y lógica
+- [ ] Crear `node/services/{dominio}/normalize{Dominio}.ts` — normalización del raw
+- [ ] Crear `node/routes/{dominio}.ts` — handler REST `*`
+- [ ] Registrar la route en `node/service.ts` y `node/service.json` `*`
+- [ ] Crear `node/resolvers/queries/{dominio}.ts` — resolver GraphQL `*`
+- [ ] Registrar el resolver en `node/resolvers/queries/index.ts` `*`
+- [ ] Declarar el tipo en `graphql/types/{dominio}.graphql` y la query en `graphql/schema.graphql` `*`
+- [ ] Agregar tests: validación, normalizer y service con mocks
+- [ ] Definir TTL de cache en la route (`setCache(ctx, N)`)
+- [ ] Justificar visibilidad pública en `service.json` o scope en GraphQL si aplica
+
+---
+
 ## Cómo crear un nuevo client
 
 Un client encapsula toda la comunicación con una API externa o interna de VTEX.
@@ -642,6 +663,48 @@ throw new ExternalServiceError('Error en carrier', error) // → 502
 ```
 
 Errores no capturados devuelven 500 automáticamente.
+
+---
+
+## Contrato estándar de respuesta
+
+Todos los endpoints de este boilerplate responden con uno de dos shapes. Los tipos están exportados desde `node/utils/response.ts`.
+
+### Error
+
+Cualquier error controlado o no controlado produce siempre este shape:
+
+```json
+{
+  "success": false,
+  "code": "VALIDATION_ERROR",
+  "message": "skuId es requerido",
+  "details": null
+}
+```
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `success` | `false` | Siempre `false` en errores |
+| `code` | `string` | Identificador del error — `VALIDATION_ERROR`, `EXTERNAL_SERVICE_ERROR`, `INTERNAL_SERVER_ERROR` |
+| `message` | `string` | Mensaje legible para el consumidor |
+| `details` | `unknown \| null` | Información adicional opcional. `null` si no aplica |
+
+### Éxito
+
+Los dominios de este boilerplate devuelven el shape del dominio directamente, sin envoltura `data`. Cada dominio define su propio contrato de éxito tipado en `node/typings/`.
+
+```json
+{
+  "skuId": "5103261",
+  "skuName": "Remera Lisa Blanca",
+  "sellers": [...]
+}
+```
+
+Si necesitás una envoltura genérica de éxito, `buildSuccessResponse<T>(data)` está disponible y retorna `{ success: true, data: T }`. Usala cuando el contexto lo requiera.
+
+> `success: false` como discriminador es suficiente para que cualquier cliente detecte el caso de error sin parsear el código HTTP.
 
 ---
 
