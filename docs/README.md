@@ -16,6 +16,22 @@ Cualquier nuevo dominio (tracking, inventory, pricing, etc.) sigue el mismo patr
 
 ---
 
+## Reglas no negociables
+
+Estas reglas no son sugerencias. Son el estándar del boilerplate y se aplican a todos los dominios, sin excepción.
+
+| Regla | Por qué |
+|---|---|
+| **No poner lógica de negocio en routes** | Las routes solo coordinan: extraen params, llaman al service, setean cache y body. Nada más. |
+| **No poner lógica de negocio en resolvers** | Los resolvers son el equivalente GraphQL de las routes: delegan al service, no procesan. |
+| **No poner lógica de negocio en clients** | Los clients encapsulan comunicación HTTP, no decisiones de negocio. |
+| **Todo input se valida al inicio del service** | La validación es responsabilidad del service, no del transport. Si el service no valida, nadie valida. |
+| **Toda integración externa debe considerar timeout** | Sin timeout, un servicio externo caído cuelga la request indefinidamente. Usar `withTimeout`. |
+| **Todo dominio nuevo debe traer tests mínimos** | Validación, normalizador y service con mocks. Sin tests, el dominio no está terminado. |
+| **Toda ruta pública debe justificar por qué es pública** | El default es privado. Lo público es una excepción que requiere decisión consciente. |
+
+---
+
 ## Requisitos
 
 - Node.js 16+
@@ -45,6 +61,7 @@ https://app.io.vtex.com/asylummarketing.vtex-io-backend-base/v0/asylummarketing/
 https://{workspace}--asylummarketing.myvtex.com/_v/public/healthcheck
 https://{workspace}--asylummarketing.myvtex.com/_v/public/tracking/:orderId
 https://{workspace}--asylummarketing.myvtex.com/_v/public/inventory/:skuId
+https://{workspace}--asylummarketing.myvtex.com/_v/public/availability/:skuId
 ```
 
 ---
@@ -179,7 +196,8 @@ function createCtx(overrides = {}) {
 │   └── types/                      # Un archivo .graphql por dominio
 │       ├── common.graphql
 │       ├── tracking.graphql
-│       └── inventory.graphql
+│       ├── inventory.graphql
+│       └── availability.graphql
 ├── node/
 │   ├── index.ts                    # Entry point: exporta service (REST) y resolvers (GraphQL)
 │   ├── service.ts                  # Registra rutas REST con su cadena de middlewares
@@ -190,28 +208,34 @@ function createCtx(overrides = {}) {
 │   │   ├── oms.ts                  # Client para OMS de VTEX
 │   │   ├── catalog.ts              # Client para Catalog de VTEX
 │   │   ├── inventory.ts            # Client para Logistics/Inventory de VTEX
+│   │   ├── seller.ts               # Client para Seller Register de VTEX
 │   │   └── externalCarrier.ts      # Client para API externa de carrier
 │   ├── resolvers/
 │   │   ├── index.ts                # Agrupa queries y mutations
 │   │   ├── queries/
 │   │   │   ├── index.ts            # Registra todos los query resolvers
 │   │   │   ├── tracking.ts
-│   │   │   └── inventory.ts
+│   │   │   ├── inventory.ts
+│   │   │   └── availability.ts
 │   │   └── mutations/
 │   │       └── index.ts
 │   ├── routes/                     # Handlers de rutas REST — solo coordinan, sin lógica
 │   │   ├── healthcheck.ts
 │   │   ├── tracking.ts
-│   │   └── inventory.ts
+│   │   ├── inventory.ts
+│   │   └── availability.ts
 │   ├── services/                   # Lógica de negocio — agnóstica al transport
 │   │   ├── settings/
 │   │   │   └── getAppSettings.ts
 │   │   ├── tracking/
 │   │   │   ├── getTrackingData.ts
 │   │   │   └── normalizeTracking.ts
-│   │   └── inventory/
-│   │       ├── getInventoryByChannel.ts
-│   │       └── normalizeInventory.ts
+│   │   ├── inventory/
+│   │   │   ├── getInventoryByChannel.ts
+│   │   │   └── normalizeInventory.ts
+│   │   └── availability/
+│   │       ├── getAvailabilityBySeller.ts
+│   │       └── normalizeAvailability.ts
 │   ├── middlewares/
 │   │   ├── errorHandler.ts         # Captura AppError y errores no controlados
 │   │   ├── requestLogger.ts        # Log de entrada/salida con requestId
@@ -223,18 +247,20 @@ function createCtx(overrides = {}) {
 │   │   └── ExternalServiceError.ts # 502 — fallo de servicio externo
 │   ├── validations/                # Un archivo por dominio
 │   │   ├── tracking.ts
-│   │   └── inventory.ts
+│   │   ├── inventory.ts
+│   │   └── availability.ts
 │   ├── typings/                    # Interfaces TypeScript por dominio
 │   │   ├── context.ts              # Context y State tipados
 │   │   ├── settings.ts             # AppSettings
 │   │   ├── tracking.ts
-│   │   └── inventory.ts
+│   │   ├── inventory.ts
+│   │   └── availability.ts
 │   ├── config/
 │   │   ├── constants.ts
 │   │   └── timeouts.ts
 │   └── utils/
 │       ├── logger.ts               # Logger estructurado en JSON
-│       ├── response.ts             # buildErrorResponse, buildSuccessResponse, setCache
+│       ├── response.ts             # ApiSuccessResponse<T>, ApiErrorResponse, buildErrorResponse, buildSuccessResponse, setCache
 │       ├── withRetry.ts            # Reintentos con backoff exponencial
 │       └── withTimeout.ts          # Timeout configurable por llamada
 ├── messages/
@@ -284,6 +310,55 @@ requestLogger       ← loguea salida con status y durationMs
 ```
 
 Para GraphQL el flujo es el mismo desde el resolver en adelante — routes y resolvers comparten los mismos services.
+
+### Flujo cuando algo falla
+
+Cualquier error lanzado dentro del service o el client es capturado por `errorHandler`, que está primero en la cadena.
+
+```
+Request entrante
+      │
+      ▼
+ errorHandler       ← envuelve todo con try/catch
+      │
+      ▼
+  ... middlewares ...
+      │
+      ▼
+ route handler
+      │
+      ▼
+   service          ← orquesta la lógica
+      │
+      ▼
+   client           ← llama API externa → falla (timeout, 5xx, red)
+      │
+      ▼  lanza ExternalServiceError("Error en carrier", error)
+   service          ← no captura — deja que suba
+      │
+      ▼
+ errorHandler       ← captura, lee statusCode y code del AppError
+      │
+      ▼
+  HTTP 502 + body:
+  {
+    "success": false,
+    "code": "EXTERNAL_SERVICE_ERROR",
+    "message": "Error en carrier",
+    "details": null
+  }
+```
+
+Las clases de error mapean directamente al código HTTP:
+
+| Error lanzado | HTTP | `code` |
+|---|---|---|
+| `ValidationError` | 400 | `VALIDATION_ERROR` |
+| `AppError` (custom) | el que definas | el que definas |
+| `ExternalServiceError` | 502 | `EXTERNAL_SERVICE_ERROR` |
+| cualquier otro `Error` | 500 | `INTERNAL_SERVER_ERROR` |
+
+> El service **nunca captura** los errores para transformarlos en respuestas HTTP — eso es responsabilidad exclusiva de `errorHandler`. El service solo lanza.
 
 ---
 
@@ -573,6 +648,20 @@ const data = await withTimeout(ctx.clients.oms.getOrder(...), 5000)
 // Cache en la respuesta HTTP
 setCache(ctx, 60)  // 60 segundos. setCache(ctx, 0) = no-store
 ```
+
+### Estrategia de cache por tipo de endpoint
+
+El CDN de VTEX cachea las respuestas públicas según el header `Cache-Control` que seteás. Elegir mal el TTL tiene consecuencias reales: demasiado alto y los datos quedan desactualizados, demasiado bajo y cada request va al origin.
+
+| Tipo de endpoint | TTL sugerido | Motivo |
+|---|---|---|
+| Healthcheck | `0` (no-store) | Debe reflejar el estado real en tiempo real |
+| Tracking / estado de orden | `0` o muy bajo (≤ 10 s) | Dato mutable que el usuario espera ver actualizado |
+| Inventory agregado | `30`–`60` s | Cambia con frecuencia pero tolera algo de lag |
+| Pricing sensible / precios especiales | `0` (no-store) | Riesgo de negocio si un precio incorrecto queda cacheado |
+| Catálogos / datos de solo lectura | `60`–`300` s | Dato estable, alto beneficio de cachear |
+
+> **Romper el cache manualmente**: el CDN cachea por URL. Si necesitás forzar un refresh en desarrollo, agregá un query param: `?v=2`, `?v=3`, etc.
 
 ---
 

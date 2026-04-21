@@ -9,6 +9,7 @@ import { responseTime } from './middlewares/responseTime'
 import { healthcheck } from './routes/healthcheck'
 import { trackingRoute } from './routes/tracking'
 import { inventoryRoute } from './routes/inventory'
+import { availabilityRoute } from './routes/availability'
 
 export default new Service<Clients, State, ParamsContext>({
   clients: {
@@ -29,6 +30,9 @@ export default new Service<Clients, State, ParamsContext>({
     }),
     inventory: method({
       GET: [errorHandler, requestId, responseTime, requestLogger, inventoryRoute],
+    }),
+    availability: method({
+      GET: [errorHandler, requestId, responseTime, requestLogger, availabilityRoute],
     }),
   },
 })

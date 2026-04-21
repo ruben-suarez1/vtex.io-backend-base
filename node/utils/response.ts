@@ -1,17 +1,33 @@
 import type { Context } from '../typings/context'
 
-export function buildSuccessResponse<T>(data: T) {
+export interface ApiSuccessResponse<T> {
+  success: true
+  data: T
+}
+
+export interface ApiErrorResponse {
+  success: false
+  code: string
+  message: string
+  details: unknown
+}
+
+export function buildSuccessResponse<T>(data: T): ApiSuccessResponse<T> {
   return {
     success: true,
-    ...data,
+    data,
   }
 }
 
-export function buildErrorResponse(message: string, code?: string, details?: unknown) {
+export function buildErrorResponse(
+  message: string,
+  code: string,
+  details: unknown = null
+): ApiErrorResponse {
   return {
     success: false,
-    message,
     code,
+    message,
     details,
   }
 }

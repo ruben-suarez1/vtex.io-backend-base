@@ -17,6 +17,10 @@
     "inventory": {
       "path": "/_v/public/inventory/:skuId",
       "public": true
+    },
+    "availability": {
+      "path": "/_v/public/availability/:skuId",
+      "public": true
     }
   }
 }

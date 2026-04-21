@@ -3,6 +3,7 @@ import OMSClient from './clients/oms'
 import ExternalCarrierClient from './clients/externalCarrier'
 import InventoryClient from './clients/inventory'
 import CatalogClient from './clients/catalog'
+import SellerClient from './clients/seller'
 
 export class Clients extends IOClients {
   public get apps() {
@@ -23,5 +24,9 @@ export class Clients extends IOClients {
 
   public get catalog() {
     return this.getOrSet('catalog', CatalogClient)
+  }
+
+  public get seller() {
+    return this.getOrSet('seller', SellerClient)
   }
 }
