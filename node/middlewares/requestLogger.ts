@@ -5,6 +5,7 @@ export async function requestLogger(ctx: Context, next: MiddlewareNext) {
   const start = Date.now()
 
   logger.info('Incoming request', {
+    requestId: ctx.state.requestId,
     method: ctx.method,
     path: ctx.path,
     query: ctx.query,
@@ -14,6 +15,7 @@ export async function requestLogger(ctx: Context, next: MiddlewareNext) {
   await next()
 
   logger.info('Request finished', {
+    requestId: ctx.state.requestId,
     method: ctx.method,
     path: ctx.path,
     status: ctx.status,

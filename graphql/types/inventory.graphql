@@ -1,0 +1,15 @@
+type WarehouseBalance {
+  warehouseId: String!
+  warehouseName: String!
+  totalQuantity: Int!
+  reservedQuantity: Int!
+  availableQuantity: Int!
+}
+
+type InventoryResponse {
+  skuId: String!
+  skuName: String!
+  channel: String
+  totalAvailable: Int!
+  warehouses: [WarehouseBalance!]!
+}

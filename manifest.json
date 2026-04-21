@@ -1,7 +1,7 @@
 {
   "vendor": "asylummarketing",
   "name": "vtex-io-backend-base",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "title": "VTEX IO Backend Base",
   "description": "Boilerplate backend enterprise para VTEX IO con rutas REST, GraphQL, clients, services y middlewares",
   "builders": {
@@ -16,6 +16,27 @@
       "attrs": {
         "host": "*.vtexcommercestable.com.br",
         "path": "/api/oms/pvt/orders/*"
+      }
+    },
+    {
+      "name": "outbound-access",
+      "attrs": {
+        "host": "*.vtexcommercestable.com.br",
+        "path": "/api/logistics/pvt/inventory/*"
+      }
+    },
+    {
+      "name": "outbound-access",
+      "attrs": {
+        "host": "*.vtexcommercestable.com.br",
+        "path": "/api/catalog/pvt/stockkeepingunit/*"
+      }
+    },
+    {
+      "name": "outbound-access",
+      "attrs": {
+        "host": "*.vtexcommercestable.com.br",
+        "path": "/api/seller-register/pvt/sellers/*"
       }
     }
   ],

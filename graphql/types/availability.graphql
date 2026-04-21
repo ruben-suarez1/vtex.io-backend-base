@@ -1,0 +1,12 @@
+type SellerAvailability {
+  sellerId: String!
+  sellerName: String!
+  isAvailable: Boolean!
+  totalAvailable: Int!
+}
+
+type AvailabilityBySellerResponse {
+  skuId: String!
+  skuName: String!
+  sellers: [SellerAvailability!]!
+}
