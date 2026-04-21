@@ -695,6 +695,8 @@ Cualquier error controlado o no controlado produce siempre este shape:
 | `message` | `string` | Mensaje legible para el consumidor |
 | `details` | `unknown \| null` | Información adicional opcional. `null` si no aplica |
 
+> **`details` nunca debe contener** tokens, credenciales, API keys, payloads de servicios externos ni datos personales. Es un campo público — cualquier consumidor de la API lo puede leer.
+
 ### Éxito
 
 Los dominios de este boilerplate devuelven el shape del dominio directamente, sin envoltura `data`. Cada dominio define su propio contrato de éxito tipado en `node/typings/`.
@@ -759,6 +761,25 @@ const settings = await getAppSettings(ctx)
 Para agregar un nuevo setting:
 1. Declararlo en `manifest.json > settingsSchema > properties`
 2. Agregarlo a `node/typings/settings.ts > AppSettings`
+
+---
+
+## Versionado
+
+La versión vive en `manifest.json`. Seguimos semver:
+
+| Cambio | Bump |
+|---|---|
+| Cambio estructural mayor — renombrar capas, romper contratos de response, cambiar convención de carpetas | `major` |
+| Nuevo dominio compatible, nuevo client, nueva ruta o query GraphQL | `minor` |
+| Fix de bug, mejora de performance, tests, documentación | `patch` |
+
+```bash
+# Ejemplo en manifest.json
+"version": "1.2.0"
+```
+
+> VTEX IO requiere publicar cada versión antes de deployar (`vtex publish` → `vtex deploy`). Un bump incorrecto puede romper apps que dependen de esta versión.
 
 ---
 
